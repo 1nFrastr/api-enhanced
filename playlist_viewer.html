@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>啾啾_000喜欢的音乐 | 歌单时光机</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Orbitron:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style type="text/tailwindcss">
+        @layer base {
+            :root {
+                --color-bg: #0a0a0f;
+                --color-surface: #12121a;
+                --color-surface-light: #1a1a25;
+                --color-accent: #00d4aa;
+                --color-accent-secondary: #7c3aed;
+                --color-text: #e2e8f0;
+                --color-text-muted: #94a3b8;
+            }
+            body {
+                font-family: 'Outfit', 'Noto Sans SC', sans-serif;
+                background: var(--color-bg);
+                color: var(--color-text);
+                min-height: 100vh;
+            }
+        }
+        @layer components {
+            .glass-panel {
+                background: rgba(18, 18, 26, 0.8);
+                backdrop-filter: blur(20px);
+                border: 1px solid rgba(255, 255, 255, 0.08);
+            }
+            .neon-glow {
+                box-shadow: 0 0 20px rgba(0, 212, 170, 0.3),
+                            0 0 40px rgba(0, 212, 170, 0.1);
+            }
+            .gradient-text {
+                background: linear-gradient(135deg, #00d4aa 0%, #7c3aed 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+            }
+            .track-card {
+                background: linear-gradient(145deg, rgba(26, 26, 37, 0.9) 0%, rgba(18, 18, 26, 0.9) 100%);
+                border: 1px solid rgba(255, 255, 255, 0.05);
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            .track-card:hover {
+                transform: translateY(-2px);
+                border-color: rgba(0, 212, 170, 0.3);
+                box-shadow: 0 10px 40px rgba(0, 212, 170, 0.15);
+            }
+            .input-field {
+                background: rgba(10, 10, 15, 0.6);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                transition: all 0.3s ease;
+            }
+            .input-field:focus {
+                border-color: var(--color-accent);
+                box-shadow: 0 0 0 3px rgba(0, 212, 170, 0.2);
+            }
+            .stat-card {
+                background: linear-gradient(135deg, rgba(0, 212, 170, 0.1) 0%, rgba(124, 58, 237, 0.1) 100%);
+                border: 1px solid rgba(0, 212, 170, 0.2);
+            }
+            /* Custom scrollbar */
+            ::-webkit-scrollbar {
+                width: 8px;
+                height: 8px;
+            }
+            ::-webkit-scrollbar-track {
+                background: var(--color-bg);
+            }
+            ::-webkit-scrollbar-thumb {
+                background: linear-gradient(180deg, var(--color-accent) 0%, var(--color-accent-secondary) 100%);
+                border-radius: 4px;
+            }
+            ::-webkit-scrollbar-thumb:hover {
+                background: var(--color-accent);
+            }
+            /* Animation */
+            @keyframes fadeInUp {
+                from {
+                    opacity: 0;
+                    transform: translateY(20px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+            .animate-fade-in-up {
+                animation: fadeInUp 0.5s ease-out forwards;
+            }
+            .stagger-1 { animation-delay: 0.05s; }
+            .stagger-2 { animation-delay: 0.1s; }
+            .stagger-3 { animation-delay: 0.15s; }
+            .stagger-4 { animation-delay: 0.2s; }
+
+            /* Background mesh gradient */
+            .mesh-gradient {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                z-index: -1;
+                background:
+                    radial-gradient(ellipse at 20% 20%, rgba(0, 212, 170, 0.15) 0%, transparent 50%),
+                    radial-gradient(ellipse at 80% 80%, rgba(124, 58, 237, 0.15) 0%, transparent 50%),
+                    radial-gradient(ellipse at 50% 50%, rgba(0, 212, 170, 0.05) 0%, transparent 70%);
+            }
+            /* Noise texture overlay */
+            .noise-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                z-index: -1;
+                opacity: 0.03;
+                background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            }
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <div class="mesh-gradient"></div>
+    <div class="noise-overlay"></div>
+
+    <!-- Header -->
+    <header class="fixed top-0 left-0 right-0 z-50 glass-panel border-b border-white/5">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-violet-600 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold gradient-text" style="font-family: 'Orbitron', sans-serif;">MusicTime</h1>
+                        <p class="text-xs text-slate-400">歌单时光机</p>
+                    </div>
+                </div>
+                <div class="text-right hidden sm:block">
+                    <p class="text-sm text-slate-300" id="header-stats">加载中...</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="pt-24 pb-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto">
+            <!-- Playlist Info -->
+            <section class="mb-8 animate-fade-in-up">
+                <div class="glass-panel rounded-2xl p-6 sm:p-8">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div>
+                            <h2 class="text-2xl sm:text-3xl font-bold text-white mb-2" id="playlist-name">加载中...</h2>
+                            <p class="text-slate-400 flex items-center gap-2">
+                                <span id="playlist-author"></span>
+                                <span class="w-1 h-1 rounded-full bg-slate-600"></span>
+                                <span id="playlist-count"></span> 首歌曲
+                            </p>
+                        </div>
+                        <div class="flex gap-3 text-sm">
+                            <div class="stat-card rounded-xl px-4 py-3 text-center">
+                                <p class="text-emerald-400 font-semibold" id="create-time">-</p>
+                                <p class="text-slate-500 text-xs mt-1">创建于</p>
+                            </div>
+                            <div class="stat-card rounded-xl px-4 py-3 text-center">
+                                <p class="text-violet-400 font-semibold" id="update-time">-</p>
+                                <p class="text-slate-500 text-xs mt-1">更新于</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Stats Bar -->
+            <section class="mb-6 animate-fade-in-up stagger-1">
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div class="glass-panel rounded-xl p-4 text-center">
+                        <p class="text-2xl font-bold text-white" id="stat-total">0</p>
+                        <p class="text-xs text-slate-400 mt-1">总歌曲数</p>
+                    </div>
+                    <div class="glass-panel rounded-xl p-4 text-center">
+                        <p class="text-2xl font-bold text-emerald-400" id="stat-filtered">0</p>
+                        <p class="text-xs text-slate-400 mt-1">当前显示</p>
+                    </div>
+                    <div class="glass-panel rounded-xl p-4 text-center">
+                        <p class="text-2xl font-bold text-violet-400" id="stat-range">-</p>
+                        <p class="text-xs text-slate-400 mt-1">时间跨度</p>
+                    </div>
+                    <div class="glass-panel rounded-xl p-4 text-center">
+                        <p class="text-2xl font-bold text-pink-400" id="stat-artists">0</p>
+                        <p class="text-xs text-slate-400 mt-1">不同歌手</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Filters -->
+            <section class="mb-6 animate-fade-in-up stagger-2">
+                <div class="glass-panel rounded-2xl p-4 sm:p-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <!-- Search -->
+                        <div class="relative">
+                            <label class="block text-xs font-medium text-slate-400 mb-2">歌名搜索</label>
+                            <div class="relative">
+                                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                </svg>
+                                <input type="text" id="search-input" placeholder="输入歌名或歌手..."
+                                    class="input-field w-full pl-10 pr-4 py-2.5 rounded-xl text-sm text-white placeholder-slate-500 outline-none">
+                            </div>
+                        </div>
+
+                        <!-- Year Filter -->
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-2">年份</label>
+                            <select id="year-filter" class="input-field w-full px-4 py-2.5 rounded-xl text-sm text-white outline-none cursor-pointer">
+                                <option value="">全部年份</option>
+                            </select>
+                        </div>
+
+                        <!-- Date Range Start -->
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-2">开始日期</label>
+                            <input type="date" id="date-start"
+                                class="input-field w-full px-4 py-2.5 rounded-xl text-sm text-white outline-none">
+                        </div>
+
+                        <!-- Date Range End -->
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-2">结束日期</label>
+                            <input type="date" id="date-end"
+                                class="input-field w-full px-4 py-2.5 rounded-xl text-sm text-white outline-none">
+                        </div>
+                    </div>
+
+                    <!-- Second Row -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+                        <!-- Artist Filter -->
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-2">歌手筛选</label>
+                            <select id="artist-filter" class="input-field w-full px-4 py-2.5 rounded-xl text-sm text-white outline-none cursor-pointer">
+                                <option value="">全部歌手</option>
+                            </select>
+                        </div>
+
+                        <!-- Sort -->
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-2">排序方式</label>
+                            <select id="sort-order" class="input-field w-full px-4 py-2.5 rounded-xl text-sm text-white outline-none cursor-pointer">
+                                <option value="newest">最新添加优先</option>
+                                <option value="oldest">最早添加优先</option>
+                                <option value="name-asc">歌名 A-Z</option>
+                                <option value="name-desc">歌名 Z-A</option>
+                            </select>
+                        </div>
+
+                        <!-- Reset Button -->
+                        <div class="flex items-end">
+                            <button id="reset-btn" class="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium transition-colors border border-slate-700 hover:border-slate-600">
+                                重置筛选
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Data Visualization Dashboard -->
+            <section class="mb-6 animate-fade-in-up stagger-3">
+                <div class="glass-panel rounded-2xl p-4 sm:p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-sm font-medium text-slate-400">月度添加趋势</h3>
+                        <div class="flex gap-2">
+                            <button id="chart-view-monthly" class="px-3 py-1 text-xs rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">按月</button>
+                            <button id="chart-view-yearly" class="px-3 py-1 text-xs rounded-lg bg-slate-800 text-slate-400 border border-slate-700">按年</button>
+                        </div>
+                    </div>
+
+                    <!-- Heatmap Chart -->
+                    <div id="chart-container" class="relative">
+                        <div class="h-32 sm:h-40 flex items-end gap-1 sm:gap-1.5 overflow-x-auto pb-2" id="timeline-chart">
+                            <!-- Bars will be generated here -->
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between text-xs text-slate-500 mt-2">
+                        <span id="timeline-start">-</span>
+                        <span id="timeline-end">-</span>
+                    </div>
+
+                    <!-- Peak Stats -->
+                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-4 pt-4 border-t border-white/5">
+                        <div class="text-center">
+                            <p class="text-lg font-bold text-emerald-400" id="peak-month-count">0</p>
+                            <p class="text-xs text-slate-500">峰值月歌曲数</p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-lg font-bold text-violet-400" id="peak-month">-</p>
+                            <p class="text-xs text-slate-500">峰值月份</p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-lg font-bold text-pink-400" id="active-months">0</p>
+                            <p class="text-xs text-slate-500">活跃月数</p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-lg font-bold text-amber-400" id="avg-per-month">0</p>
+                            <p class="text-xs text-slate-500">月均添加</p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-lg font-bold text-cyan-400" id="best-year">-</p>
+                            <p class="text-xs text-slate-500">最佳年份</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Month Filter Quick Select -->
+            <section class="mb-6 animate-fade-in-up stagger-3">
+                <div class="glass-panel rounded-2xl p-4 sm:p-6">
+                    <h3 class="text-sm font-medium text-slate-400 mb-4">快速选择月份 <span class="text-xs text-slate-600 ml-2">点击筛选</span></h3>
+                    <div class="flex flex-wrap gap-2" id="month-quick-filters">
+                        <!-- Month buttons will be generated here -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Track List -->
+            <section class="animate-fade-in-up stagger-4">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-white">歌曲列表</h3>
+                    <span class="text-xs text-slate-500" id="showing-text">显示 0 首歌曲</span>
+                </div>
+
+                <div id="track-list" class="space-y-3">
+                    <!-- Tracks will be rendered here -->
+                </div>
+
+                <!-- Empty State -->
+                <div id="empty-state" class="hidden text-center py-16">
+                    <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-800 flex items-center justify-center">
+                        <svg class="w-8 h-8 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <p class="text-slate-400">没有找到匹配的歌曲</p>
+                    <button id="empty-reset-btn" class="mt-3 text-emerald-400 hover:text-emerald-300 text-sm">清除筛选条件</button>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script>
+        // Playlist Data (embedded for easy loading)
+        let playlistData = null;
+        let allTracks = [];
+        let filteredTracks = [];
+
+        // DOM Elements
+        const els = {
+            playlistName: document.getElementById('playlist-name'),
+            playlistAuthor: document.getElementById('playlist-author'),
+            playlistCount: document.getElementById('playlist-count'),
+            createTime: document.getElementById('create-time'),
+            updateTime: document.getElementById('update-time'),
+            headerStats: document.getElementById('header-stats'),
+            statTotal: document.getElementById('stat-total'),
+            statFiltered: document.getElementById('stat-filtered'),
+            statRange: document.getElementById('stat-range'),
+            statArtists: document.getElementById('stat-artists'),
+            peakMonthCount: document.getElementById('peak-month-count'),
+            peakMonth: document.getElementById('peak-month'),
+            activeMonths: document.getElementById('active-months'),
+            avgPerMonth: document.getElementById('avg-per-month'),
+            bestYear: document.getElementById('best-year'),
+            monthQuickFilters: document.getElementById('month-quick-filters'),
+            chartViewMonthly: document.getElementById('chart-view-monthly'),
+            chartViewYearly: document.getElementById('chart-view-yearly'),
+            searchInput: document.getElementById('search-input'),
+            yearFilter: document.getElementById('year-filter'),
+            dateStart: document.getElementById('date-start'),
+            dateEnd: document.getElementById('date-end'),
+            artistFilter: document.getElementById('artist-filter'),
+            sortOrder: document.getElementById('sort-order'),
+            resetBtn: document.getElementById('reset-btn'),
+            trackList: document.getElementById('track-list'),
+            emptyState: document.getElementById('empty-state'),
+            showingText: document.getElementById('showing-text'),
+            emptyResetBtn: document.getElementById('empty-reset-btn'),
+            timelineChart: document.getElementById('timeline-chart'),
+            timelineStart: document.getElementById('timeline-start'),
+            timelineEnd: document.getElementById('timeline-end')
+        };
+
+        // Initialize
+        async function init() {
+            try {
+                // Try to load from JSON file first
+                const response = await fetch('playlist_874935036_tracks.json');
+                if (!response.ok) throw new Error('Failed to load JSON');
+                playlistData = await response.json();
+            } catch (e) {
+                // Fallback: use embedded data placeholder
+                console.log('Using embedded data or waiting for file...');
+                showError('请确保 playlist_874935036_tracks.json 文件在同一目录下');
+                return;
+            }
+
+            allTracks = playlistData.tracks;
+            filteredTracks = [...allTracks];
+
+            renderPlaylistInfo();
+            populateFilters();
+            renderTimeline();
+            renderTracks();
+            updateStats();
+            setupEventListeners();
+        }
+
+        function showError(msg) {
+            els.trackList.innerHTML = `
+                <div class="text-center py-16">
+                    <p class="text-slate-400">${msg}</p>
+                </div>
+            `;
+        }
+
+        function renderPlaylistInfo() {
+            const info = playlistData.playlistInfo;
+            els.playlistName.textContent = info.name;
+            els.playlistAuthor.textContent = info.author;
+            els.playlistCount.textContent = info.trackCount;
+            els.createTime.textContent = info.createTime.split(' ')[0];
+            els.updateTime.textContent = info.updateTime.split(' ')[0];
+            els.headerStats.textContent = `${info.trackCount} 首歌曲 · 更新于 ${info.updateTime.split(' ')[0]}`;
+        }
+
+        function populateFilters() {
+            // Extract years and artists
+            const years = new Set();
+            const artists = new Set();
+
+            allTracks.forEach(track => {
+                const year = track.addTimeFormatted.split('/')[0];
+                years.add(year);
+                track.artists.split(', ').forEach(a => artists.add(a.trim()));
+            });
+
+            // Populate year filter
+            const sortedYears = Array.from(years).sort((a, b) => b - a);
+            sortedYears.forEach(year => {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year + '年';
+                els.yearFilter.appendChild(option);
+            });
+
+            // Populate artist filter (top 50 artists by frequency)
+            const artistCount = {};
+            allTracks.forEach(track => {
+                track.artists.split(', ').forEach(a => {
+                    const artist = a.trim();
+                    artistCount[artist] = (artistCount[artist] || 0) + 1;
+                });
+            });
+
+            const sortedArtists = Object.entries(artistCount)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 50)
+                .map(([name]) => name);
+
+            sortedArtists.forEach(artist => {
+                const option = document.createElement('option');
+                option.value = artist;
+                option.textContent = artist;
+                els.artistFilter.appendChild(option);
+            });
+
+            // Set date range inputs
+            const dates = allTracks.map(t => new Date(t.addTime));
+            const minDate = new Date(Math.min(...dates));
+            const maxDate = new Date(Math.max(...dates));
+
+            els.dateStart.min = formatDateForInput(minDate);
+            els.dateStart.max = formatDateForInput(maxDate);
+            els.dateEnd.min = formatDateForInput(minDate);
+            els.dateEnd.max = formatDateForInput(maxDate);
+        }
+
+        function formatDateForInput(date) {
+            return date.toISOString().split('T')[0];
+        }
+
+        // Store month data globally
+        let monthData = {};
+        let yearData = {};
+        let chartMode = 'monthly';
+
+        function renderTimeline() {
+            // Group tracks by month
+            monthData = {};
+            yearData = {};
+
+            allTracks.forEach(track => {
+                const [year, month] = track.addTimeFormatted.split('/');
+                const monthKey = `${year}-${month.padStart(2, '0')}`;
+                const yearKey = year;
+
+                monthData[monthKey] = (monthData[monthKey] || 0) + 1;
+                yearData[yearKey] = (yearData[yearKey] || 0) + 1;
+            });
+
+            renderChart();
+            renderMonthQuickFilters();
+            updatePeakStats();
+        }
+
+        function renderChart() {
+            els.timelineChart.innerHTML = '';
+
+            const data = chartMode === 'monthly' ? monthData : yearData;
+            const sortedKeys = Object.keys(data).sort();
+            const maxCount = Math.max(...Object.values(data));
+            const totalMonths = sortedKeys.length;
+
+            // Show all data points but limit visible bars for performance
+            const displayKeys = totalMonths > 60 ? sortedKeys.slice(-60) : sortedKeys;
+
+            displayKeys.forEach((key, index) => {
+                const count = data[key];
+                const height = maxCount > 0 ? (count / maxCount) * 100 : 5;
+                const isPeak = count === maxCount;
+
+                const barContainer = document.createElement('div');
+                barContainer.className = 'flex-1 min-w-[16px] sm:min-w-[20px] flex flex-col justify-end group cursor-pointer';
+
+                // Value label on hover
+                const valueLabel = document.createElement('div');
+                valueLabel.className = 'text-center text-xs font-bold text-emerald-400 mb-1 opacity-0 group-hover:opacity-100 transition-opacity';
+                valueLabel.textContent = count;
+                barContainer.appendChild(valueLabel);
+
+                // Bar
+                const bar = document.createElement('div');
+                const baseColor = isPeak ? 'from-pink-500 to-rose-500' :
+                                  count > maxCount * 0.7 ? 'from-emerald-400 to-teal-500' :
+                                  count > maxCount * 0.4 ? 'from-emerald-500/80 to-teal-600/80' :
+                                  'from-emerald-600/50 to-teal-700/50';
+
+                bar.className = `w-full bg-gradient-to-t ${baseColor} rounded-t transition-all duration-300 hover:brightness-125 relative`;
+                bar.style.height = `${Math.max(height, 3)}%`;
+
+                // Peak indicator
+                if (isPeak) {
+                    bar.classList.add('neon-glow');
+                    const peakBadge = document.createElement('div');
+                    peakBadge.className = 'absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-pink-400 rounded-full';
+                    bar.appendChild(peakBadge);
+                }
+
+                barContainer.appendChild(bar);
+
+                // Month label
+                const label = document.createElement('div');
+                label.className = 'text-center text-[10px] text-slate-600 mt-1 group-hover:text-slate-400 transition-colors';
+                if (chartMode === 'monthly') {
+                    const [y, m] = key.split('-');
+                    label.textContent = index % 3 === 0 ? `${y.slice(2)}/${m}` : '';
+                } else {
+                    label.textContent = key;
+                }
+                barContainer.appendChild(label);
+
+                // Tooltip
+                const tooltip = document.createElement('div');
+                tooltip.className = 'fixed z-50 px-2 py-1 bg-slate-800 text-xs text-white rounded opacity-0 pointer-events-none transition-opacity';
+                tooltip.textContent = `${key}: ${count}首`;
+                barContainer.appendChild(tooltip);
+
+                // Click to filter
+                barContainer.addEventListener('click', () => {
+                    if (chartMode === 'monthly') {
+                        const [y, m] = key.split('-');
+                        els.yearFilter.value = y;
+                        // Trigger filter
+                        applyFilters();
+                        // Scroll to filter section
+                        document.querySelector('section:nth-child(3)').scrollIntoView({ behavior: 'smooth' });
+                    } else {
+                        els.yearFilter.value = key;
+                        applyFilters();
+                    }
+                });
+
+                barContainer.addEventListener('mouseenter', (e) => {
+                    const rect = barContainer.getBoundingClientRect();
+                    tooltip.style.left = `${rect.left + rect.width / 2 - 30}px`;
+                    tooltip.style.top = `${rect.top - 30}px`;
+                    tooltip.style.opacity = '1';
+                });
+
+                barContainer.addEventListener('mouseleave', () => {
+                    tooltip.style.opacity = '0';
+                });
+
+                els.timelineChart.appendChild(barContainer);
+            });
+
+            els.timelineStart.textContent = displayKeys[0] || '-';
+            els.timelineEnd.textContent = displayKeys[displayKeys.length - 1] || '-';
+        }
+
+        function renderMonthQuickFilters() {
+            els.monthQuickFilters.innerHTML = '';
+
+            // Sort by count descending and take top 12
+            const sortedMonths = Object.entries(monthData)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 12);
+
+            sortedMonths.forEach(([month, count]) => {
+                const [y, m] = month.split('-');
+                const btn = document.createElement('button');
+                const intensity = count > 50 ? 'bg-emerald-500/30 text-emerald-300 border-emerald-500/40' :
+                                  count > 20 ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
+                                  'bg-slate-800 text-slate-400 border-slate-700';
+
+                btn.className = `px-3 py-1.5 rounded-lg text-xs border ${intensity} hover:brightness-110 transition-all flex items-center gap-2`;
+                btn.innerHTML = `
+                    <span>${y}年${parseInt(m)}月</span>
+                    <span class="px-1.5 py-0.5 rounded bg-black/20 text-[10px]">${count}首</span>
+                `;
+
+                btn.addEventListener('click', () => {
+                    els.yearFilter.value = y;
+                    applyFilters();
+                });
+
+                els.monthQuickFilters.appendChild(btn);
+            });
+        }
+
+        function updatePeakStats() {
+            const counts = Object.values(monthData);
+            const maxCount = Math.max(...counts);
+            const maxMonth = Object.entries(monthData).find(([k, v]) => v === maxCount)?.[0] || '-';
+
+            els.peakMonthCount.textContent = maxCount;
+            els.peakMonth.textContent = maxMonth;
+            els.activeMonths.textContent = Object.keys(monthData).length;
+            els.avgPerMonth.textContent = (allTracks.length / Object.keys(monthData).length).toFixed(1);
+
+            // 计算最佳年份
+            const maxYearCount = Math.max(...Object.values(yearData));
+            const maxYear = Object.entries(yearData).find(([k, v]) => v === maxYearCount)?.[0] || '-';
+            els.bestYear.textContent = maxYear;
+        }
+
+        function renderTracks() {
+            els.trackList.innerHTML = '';
+
+            if (filteredTracks.length === 0) {
+                els.trackList.classList.add('hidden');
+                els.emptyState.classList.remove('hidden');
+                els.showingText.textContent = '显示 0 首歌曲';
+                return;
+            }
+
+            els.trackList.classList.remove('hidden');
+            els.emptyState.classList.add('hidden');
+            els.showingText.textContent = `显示 ${filteredTracks.length} 首歌曲`;
+
+            filteredTracks.forEach((track, index) => {
+                const card = createTrackCard(track, index);
+                els.trackList.appendChild(card);
+            });
+        }
+
+        function createTrackCard(track, index) {
+            const div = document.createElement('div');
+            div.className = 'track-card rounded-xl p-4 flex items-center gap-4 animate-fade-in-up';
+            div.style.animationDelay = `${Math.min(index * 0.02, 0.5)}s`;
+
+            const [date, time] = track.addTimeFormatted.split(' ');
+            const [year, month, day] = date.split('/');
+
+            div.innerHTML = `
+                <div class="flex-shrink-0 w-12 h-12 rounded-lg bg-gradient-to-br from-emerald-500/20 to-violet-500/20 flex items-center justify-center text-emerald-400 font-bold text-sm">
+                    ${index + 1}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <h4 class="text-white font-medium truncate">${escapeHtml(track.name)}</h4>
+                    <p class="text-slate-400 text-sm truncate">${escapeHtml(track.artists)} · ${escapeHtml(track.album)}</p>
+                </div>
+                <div class="flex-shrink-0 text-right">
+                    <p class="text-emerald-400 text-sm font-medium">${year}/${month}/${day}</p>
+                    <p class="text-slate-500 text-xs">${time}</p>
+                </div>
+            `;
+
+            return div;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function updateStats() {
+            els.statTotal.textContent = allTracks.length;
+            els.statFiltered.textContent = filteredTracks.length;
+
+            // Calculate date range
+            if (filteredTracks.length > 0) {
+                const dates = filteredTracks.map(t => new Date(t.addTime));
+                const minDate = new Date(Math.min(...dates));
+                const maxDate = new Date(Math.max(...dates));
+                const diffDays = Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24));
+                els.statRange.textContent = diffDays > 365
+                    ? `${Math.floor(diffDays / 365)}年`
+                    : `${diffDays}天`;
+
+                // Count unique artists
+                const artistSet = new Set();
+                filteredTracks.forEach(t => t.artists.split(', ').forEach(a => artistSet.add(a.trim())));
+                els.statArtists.textContent = artistSet.size;
+            } else {
+                els.statRange.textContent = '-';
+                els.statArtists.textContent = '0';
+            }
+        }
+
+        function applyFilters() {
+            const searchTerm = els.searchInput.value.toLowerCase().trim();
+            const selectedYear = els.yearFilter.value;
+            const startDate = els.dateStart.value ? new Date(els.dateStart.value) : null;
+            const endDate = els.dateEnd.value ? new Date(els.dateEnd.value) : null;
+            const selectedArtist = els.artistFilter.value;
+            const sortOrder = els.sortOrder.value;
+
+            filteredTracks = allTracks.filter(track => {
+                // Search filter
+                if (searchTerm) {
+                    const matchName = track.name.toLowerCase().includes(searchTerm);
+                    const matchArtist = track.artists.toLowerCase().includes(searchTerm);
+                    if (!matchName && !matchArtist) return false;
+                }
+
+                // Year filter
+                if (selectedYear) {
+                    const trackYear = track.addTimeFormatted.split('/')[0];
+                    if (trackYear !== selectedYear) return false;
+                }
+
+                // Date range filter
+                const trackDate = new Date(track.addTime);
+                if (startDate && trackDate < startDate) return false;
+                if (endDate && trackDate > endDate) return false;
+
+                // Artist filter
+                if (selectedArtist && !track.artists.includes(selectedArtist)) return false;
+
+                return true;
+            });
+
+            // Sort
+            switch (sortOrder) {
+                case 'newest':
+                    filteredTracks.sort((a, b) => b.addTime - a.addTime);
+                    break;
+                case 'oldest':
+                    filteredTracks.sort((a, b) => a.addTime - b.addTime);
+                    break;
+                case 'name-asc':
+                    filteredTracks.sort((a, b) => a.name.localeCompare(b.name, 'zh'));
+                    break;
+                case 'name-desc':
+                    filteredTracks.sort((a, b) => b.name.localeCompare(a.name, 'zh'));
+                    break;
+            }
+
+            renderTracks();
+            updateStats();
+        }
+
+        function resetFilters() {
+            els.searchInput.value = '';
+            els.yearFilter.value = '';
+            els.dateStart.value = '';
+            els.dateEnd.value = '';
+            els.artistFilter.value = '';
+            els.sortOrder.value = 'newest';
+            applyFilters();
+        }
+
+        function setupEventListeners() {
+            els.searchInput.addEventListener('input', debounce(applyFilters, 300));
+            els.yearFilter.addEventListener('change', applyFilters);
+            els.dateStart.addEventListener('change', applyFilters);
+            els.dateEnd.addEventListener('change', applyFilters);
+            els.artistFilter.addEventListener('change', applyFilters);
+            els.sortOrder.addEventListener('change', applyFilters);
+            els.resetBtn.addEventListener('click', resetFilters);
+            els.emptyResetBtn.addEventListener('click', resetFilters);
+
+            // Chart view toggle
+            els.chartViewMonthly.addEventListener('click', () => {
+                chartMode = 'monthly';
+                els.chartViewMonthly.className = 'px-3 py-1 text-xs rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+                els.chartViewYearly.className = 'px-3 py-1 text-xs rounded-lg bg-slate-800 text-slate-400 border border-slate-700';
+                renderChart();
+            });
+
+            els.chartViewYearly.addEventListener('click', () => {
+                chartMode = 'yearly';
+                els.chartViewYearly.className = 'px-3 py-1 text-xs rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+                els.chartViewMonthly.className = 'px-3 py-1 text-xs rounded-lg bg-slate-800 text-slate-400 border border-slate-700';
+                renderChart();
+            });
+        }
+
+        function debounce(fn, wait) {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => fn.apply(this, args), wait);
+            };
+        }
+
+        // Start
+        init();
+    </script>
+</body>
+</html>

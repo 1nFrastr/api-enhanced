@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>歌单月度统计可视化 | 啾啾_000喜欢的音乐</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-surface: #12121a;
+            --bg-card: #1a1a25;
+            --accent-primary: #00d4aa;
+            --accent-secondary: #7c3aed;
+            --text-primary: #e2e8f0;
+            --text-muted: #94a3b8;
+        }
+        body {
+            font-family: 'Outfit', 'Noto Sans SC', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+        .glass-panel {
+            background: rgba(18, 18, 26, 0.8);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, #00d4aa 0%, #7c3aed 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .mesh-gradient {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background:
+                radial-gradient(ellipse at 20% 20%, rgba(0, 212, 170, 0.1) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(124, 58, 237, 0.1) 0%, transparent 50%);
+        }
+        .month-card {
+            background: linear-gradient(145deg, rgba(26, 26, 37, 0.9) 0%, rgba(18, 18, 26, 0.9) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+        .month-card:hover {
+            border-color: rgba(0, 212, 170, 0.3);
+            transform: translateY(-2px);
+        }
+        .song-item {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        }
+        .song-item:last-child {
+            border-bottom: none;
+        }
+        .peak-month {
+            background: linear-gradient(135deg, rgba(236, 72, 153, 0.2) 0%, rgba(124, 58, 237, 0.2) 100%);
+            border-color: rgba(236, 72, 153, 0.4);
+        }
+        .peak-month .count-badge {
+            background: linear-gradient(135deg, #ec4899 0%, #a855f7 100%);
+        }
+        .count-badge {
+            background: rgba(0, 212, 170, 0.2);
+            color: #00d4aa;
+        }
+        .sort-btn.active {
+            background: linear-gradient(135deg, #00d4aa 0%, #7c3aed 100%);
+            color: white;
+            border-color: transparent;
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #00d4aa 0%, #7c3aed 100%);
+            border-radius: 4px;
+        }
+        .year-filter-btn.active {
+            background: rgba(0, 212, 170, 0.3);
+            color: #00d4aa;
+            border-color: rgba(0, 212, 170, 0.5);
+        }
+        .expand-btn {
+            transition: transform 0.3s ease;
+        }
+        .expand-btn.expanded {
+            transform: rotate(180deg);
+        }
+        .songs-container {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        .songs-container.expanded {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeInUp 0.5s ease forwards;
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen">
+    <div class="mesh-gradient"></div>
+
+    <!-- Header -->
+    <header class="fixed top-0 left-0 right-0 z-50 glass-panel border-b border-white/5">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-violet-600 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold gradient-text">歌单月度统计</h1>
+                        <p class="text-xs text-slate-400">啾啾_000喜欢的音乐 · 数据可视化</p>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="toggleSort('time')" id="sort-time" class="sort-btn active px-4 py-2 rounded-lg bg-slate-800 text-slate-300 text-sm border border-slate-700 hover:border-slate-600 transition-all">
+                        按时间
+                    </button>
+                    <button onclick="toggleSort('count')" id="sort-count" class="sort-btn px-4 py-2 rounded-lg bg-slate-800 text-slate-300 text-sm border border-slate-700 hover:border-slate-600 transition-all">
+                        按数量
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="pt-24 pb-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto">
+            <!-- Stats Overview -->
+            <section class="mb-8">
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                    <div class="glass-panel rounded-xl p-4 text-center">
+                        <p class="text-2xl font-bold text-white">829</p>
+                        <p class="text-xs text-slate-400 mt-1">总歌曲数</p>
+                    </div>
+                    <div class="glass-panel rounded-xl p-4 text-center">
+                        <p class="text-2xl font-bold text-emerald-400">98</p>
+                        <p class="text-xs text-slate-400 mt-1">活跃月数</p>
+                    </div>
+                    <div class="glass-panel rounded-xl p-4 text-center">
+                        <p class="text-2xl font-bold text-pink-500">26</p>
+                        <p class="text-xs text-slate-400 mt-1">峰值月</p>
+                    </div>
+                    <div class="glass-panel rounded-xl p-4 text-center">
+                        <p class="text-2xl font-bold text-violet-400">8.5</p>
+                        <p class="text-xs text-slate-400 mt-1">月均添加</p>
+                    </div>
+                    <div class="glass-panel rounded-xl p-4 text-center">
+                        <p class="text-2xl font-bold text-amber-400">2020</p>
+                        <p class="text-xs text-slate-400 mt-1">最佳年份</p>
+                    </div>
+                    <div class="glass-panel rounded-xl p-4 text-center">
+                        <p class="text-lg font-bold text-cyan-400">🐭鼠年</p>
+                        <p class="text-xs text-slate-400 mt-1">145首</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Year Filter -->
+            <section class="mb-6">
+                <div class="glass-panel rounded-xl p-4">
+                    <p class="text-sm text-slate-400 mb-3">年份筛选</p>
+                    <div class="flex flex-wrap gap-2" id="year-filters">
+                        <button onclick="filterYear('')" class="year-filter-btn active px-3 py-1.5 rounded-lg text-sm border border-slate-700 bg-slate-800 text-slate-300 hover:border-slate-600 transition-all">
+                            全部
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Chart Section -->
+            <section class="mb-8">
+                <div class="glass-panel rounded-2xl p-4 sm:p-6">
+                    <h3 class="text-sm font-medium text-slate-400 mb-4">月度添加趋势图</h3>
+                    <div class="h-64 w-full">
+                        <canvas id="monthChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Weekday Stats -->
+            <section class="mb-8">
+                <div class="glass-panel rounded-2xl p-4 sm:p-6">
+                    <h3 class="text-sm font-medium text-slate-400 mb-4">星期分布统计</h3>
+                    <div class="grid grid-cols-7 gap-2">
+                        <div class="text-center p-3 rounded-lg bg-slate-800/50">
+                            <p class="text-lg font-bold text-pink-400">163</p>
+                            <p class="text-xs text-slate-400">周日</p>
+                        </div>
+                        <div class="text-center p-3 rounded-lg bg-slate-800/50">
+                            <p class="text-lg font-bold text-emerald-400">84</p>
+                            <p class="text-xs text-slate-400">周一</p>
+                        </div>
+                        <div class="text-center p-3 rounded-lg bg-slate-800/50">
+                            <p class="text-lg font-bold text-blue-400">104</p>
+                            <p class="text-xs text-slate-400">周二</p>
+                        </div>
+                        <div class="text-center p-3 rounded-lg bg-slate-800/50">
+                            <p class="text-lg font-bold text-violet-400">122</p>
+                            <p class="text-xs text-slate-400">周三</p>
+                        </div>
+                        <div class="text-center p-3 rounded-lg bg-slate-800/50">
+                            <p class="text-lg font-bold text-slate-400">76</p>
+                            <p class="text-xs text-slate-400">周四</p>
+                        </div>
+                        <div class="text-center p-3 rounded-lg bg-slate-800/50">
+                            <p class="text-lg font-bold text-amber-400">129</p>
+                            <p class="text-xs text-slate-400">周五</p>
+                        </div>
+                        <div class="text-center p-3 rounded-lg bg-slate-800/50">
+                            <p class="text-lg font-bold text-cyan-400">151</p>
+                            <p class="text-xs text-slate-400">周六</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Top Days -->
+            <section class="mb-8">
+                <div class="glass-panel rounded-2xl p-4 sm:p-6">
+                    <h3 class="text-sm font-medium text-slate-400 mb-4">单日听歌 TOP 10</h3>
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-pink-500/20 to-purple-500/20 border border-pink-500/30">
+                            <div class="flex items-center gap-3">
+                                <span class="text-xl">🥇</span>
+                                <div>
+                                    <p class="text-white font-medium">2022/01/05</p>
+                                    <p class="text-xs text-slate-400">周三</p>
+                                </div>
+                            </div>
+                            <span class="text-2xl font-bold text-pink-400">12首</span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20">
+                            <div class="flex items-center gap-3">
+                                <span class="text-xl">🥈</span>
+                                <div>
+                                    <p class="text-white font-medium">2024/02/23</p>
+                                    <p class="text-xs text-slate-400">周五</p>
+                                </div>
+                            </div>
+                            <span class="text-xl font-bold text-emerald-400">8首</span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20">
+                            <div class="flex items-center gap-3">
+                                <span class="text-xl">🥉</span>
+                                <div>
+                                    <p class="text-white font-medium">2023/10/15</p>
+                                    <p class="text-xs text-slate-400">周日</p>
+                                </div>
+                            </div>
+                            <span class="text-xl font-bold text-emerald-400">8首</span>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4">
+                            <div class="text-center p-2 rounded bg-slate-800/30">
+                                <p class="text-sm text-slate-300">2019/04/05</p>
+                                <p class="text-xs text-emerald-400">8首</p>
+                            </div>
+                            <div class="text-center p-2 rounded bg-slate-800/30">
+                                <p class="text-sm text-slate-300">2022/09/25</p>
+                                <p class="text-xs text-emerald-400">7首</p>
+                            </div>
+                            <div class="text-center p-2 rounded bg-slate-800/30">
+                                <p class="text-sm text-slate-300">2019/02/13</p>
+                                <p class="text-xs text-emerald-400">7首</p>
+                            </div>
+                            <div class="text-center p-2 rounded bg-slate-800/30">
+                                <p class="text-sm text-slate-300">2023/03/13</p>
+                                <p class="text-xs text-emerald-400">6首</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Monthly Detail Cards -->
+            <section>
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold text-white">月度详细数据</h2>
+                    <span class="text-sm text-slate-500" id="showing-count">显示 98 个月</span>
+                </div>
+
+                <div id="month-cards" class="space-y-3">
+                    <!-- Cards will be generated here -->
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script>
+        // 嵌入式数据
+        const monthStats = {"2017-08":3,"2017-10":1,"2017-11":3,"2017-12":10,"2018-01":4,"2018-02":10,"2018-03":4,"2018-04":8,"2018-05":3,"2018-06":4,"2018-07":2,"2018-08":20,"2018-09":10,"2018-10":11,"2018-11":10,"2018-12":7,"2019-01":11,"2019-02":17,"2019-03":2,"2019-04":14,"2019-05":9,"2019-06":14,"2019-07":18,"2019-08":7,"2019-09":10,"2019-10":19,"2019-11":10,"2019-12":8,"2020-01":10,"2020-02":9,"2020-03":25,"2020-04":11,"2020-05":5,"2020-06":26,"2020-07":11,"2020-08":9,"2020-09":12,"2020-10":14,"2020-11":12,"2020-12":1,"2021-01":17,"2021-02":7,"2021-03":13,"2021-04":4,"2021-05":5,"2021-06":9,"2021-07":3,"2021-08":2,"2021-10":5,"2021-11":6,"2021-12":3,"2022-01":19,"2022-02":4,"2022-03":3,"2022-04":3,"2022-05":5,"2022-06":4,"2022-08":1,"2022-09":15,"2022-10":8,"2022-11":5,"2022-12":6,"2023-01":7,"2023-02":3,"2023-03":23,"2023-04":11,"2023-05":5,"2023-06":3,"2023-08":11,"2023-09":5,"2023-10":21,"2023-11":8,"2023-12":8,"2024-01":1,"2024-02":18,"2024-03":16,"2024-04":11,"2024-05":7,"2024-07":6,"2024-08":2,"2024-09":6,"2024-10":2,"2024-11":6,"2024-12":1,"2025-01":1,"2025-02":5,"2025-03":1,"2025-04":7,"2025-05":6,"2025-06":5,"2025-07":13,"2025-08":10,"2025-09":8,"2025-10":12,"2025-11":4,"2025-12":3,"2026-01":19,"2026-02":13};
+
+        const yearStats = {"2017":17,"2018":93,"2019":139,"2020":145,"2021":74,"2022":73,"2023":105,"2024":76,"2025":75,"2026":32};
+
+        const zodiacMap = {"2017":"🐔 鸡年","2018":"🐕 狗年","2019":"🐷 猪年","2020":"🐭 鼠年","2021":"🐂 牛年","2022":"🐯 虎年","2023":"🐰 兔年","2024":"🐲 龙年","2025":"🐍 蛇年","2026":"🐴 马年"};
+
+        let currentSort = 'time';
+        let currentFilter = '';
+        let chart = null;
+
+        // Initialize
+        function init() {
+            populateYearFilters();
+            renderChart();
+            renderMonthCards();
+        }
+
+        function populateYearFilters() {
+            const container = document.getElementById('year-filters');
+            const years = Object.keys(yearStats).sort((a, b) => b - a);
+
+            years.forEach(year => {
+                const btn = document.createElement('button');
+                btn.className = 'year-filter-btn px-3 py-1.5 rounded-lg text-sm border border-slate-700 bg-slate-800 text-slate-300 hover:border-slate-600 transition-all';
+                btn.textContent = year + '年';
+                btn.onclick = () => filterYear(year, btn);
+                container.appendChild(btn);
+            });
+        }
+
+        function renderChart() {
+            const ctx = document.getElementById('monthChart').getContext('2d');
+            const sortedMonths = Object.keys(monthStats).sort();
+            const values = sortedMonths.map(m => monthStats[m]);
+            const maxVal = Math.max(...values);
+
+            // 渐变色
+            const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+            gradient.addColorStop(0, 'rgba(0, 212, 170, 0.8)');
+            gradient.addColorStop(1, 'rgba(124, 58, 237, 0.2)');
+
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: sortedMonths,
+                    datasets: [{
+                        label: '歌曲数',
+                        data: values,
+                        backgroundColor: values.map(v => v === maxVal ? 'rgba(236, 72, 153, 0.9)' : gradient),
+                        borderColor: values.map(v => v === maxVal ? 'rgba(236, 72, 153, 1)' : 'rgba(0, 212, 170, 0.5)'),
+                        borderWidth: 1,
+                        borderRadius: 4,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(18, 18, 26, 0.95)',
+                            titleColor: '#e2e8f0',
+                            bodyColor: '#00d4aa',
+                            borderColor: 'rgba(0, 212, 170, 0.3)',
+                            borderWidth: 1,
+                            padding: 12,
+                            callbacks: {
+                                title: (items) => {
+                                    const [y, m] = items[0].label.split('-');
+                                    return `${y}年${parseInt(m)}月`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false, color: 'rgba(255,255,255,0.05)' },
+                            ticks: {
+                                color: '#64748b',
+                                font: { size: 10 },
+                                maxRotation: 45,
+                                callback: (val, idx) => {
+                                    if (idx % 6 === 0) {
+                                        const label = sortedMonths[idx];
+                                        return label ? label.replace('-', '/') : '';
+                                    }
+                                    return '';
+                                }
+                            }
+                        },
+                        y: {
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: '#64748b', font: { size: 10 } }
+                        }
+                    },
+                    onClick: (e, elements) => {
+                        if (elements.length > 0) {
+                            const index = elements[0].index;
+                            const month = sortedMonths[index];
+                            scrollToMonth(month);
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderMonthCards() {
+            const container = document.getElementById('month-cards');
+            container.innerHTML = '';
+
+            let months = Object.keys(monthStats);
+
+            // Apply year filter
+            if (currentFilter) {
+                months = months.filter(m => m.startsWith(currentFilter));
+            }
+
+            // Apply sort
+            if (currentSort === 'count') {
+                months.sort((a, b) => monthStats[b] - monthStats[a]);
+            } else {
+                months.sort().reverse();
+            }
+
+            document.getElementById('showing-count').textContent = `显示 ${months.length} 个月`;
+
+            const maxCount = Math.max(...Object.values(monthStats));
+
+            months.forEach((month, idx) => {
+                const count = monthStats[month];
+                const [year, m] = month.split('-');
+                const isPeak = count === maxCount;
+                const zodiac = zodiacMap[year] || year;
+                const intensity = count > maxCount * 0.6 ? 'high' : count > maxCount * 0.3 ? 'medium' : 'low';
+
+                const card = document.createElement('div');
+                card.id = `month-${month}`;
+                card.className = `month-card rounded-xl p-4 animate-fade-in ${isPeak ? 'peak-month' : ''}`;
+                card.style.animationDelay = `${idx * 0.03}s`;
+
+                card.innerHTML = `
+                    <div class="flex items-center justify-between cursor-pointer" onclick="toggleExpand('${month}')">
+                        <div class="flex items-center gap-4">
+                            <div class="text-center min-w-[70px]">
+                                <p class="text-lg font-bold text-white">${year}</p>
+                                <p class="text-xs text-slate-400">${parseInt(m)}月</p>
+                            </div>
+                            <div class="count-badge px-3 py-1 rounded-full text-sm font-semibold">
+                                ${count} 首
+                            </div>
+                            ${isPeak ? '<span class="text-pink-400 text-xs">🔥 峰值</span>' : ''}
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <span class="text-xs text-slate-500">${zodiac}</span>
+                            <svg id="expand-${month}" class="expand-btn w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div id="songs-${month}" class="songs-container mt-0">
+                        <div class="pt-4 border-t border-white/5 mt-4">
+                            <p class="text-xs text-slate-500 mb-3">加载中...</p>
+                        </div>
+                    </div>
+                `;
+
+                container.appendChild(card);
+            });
+        }
+
+        function toggleExpand(month) {
+            const container = document.getElementById(`songs-${month}`);
+            const btn = document.getElementById(`expand-${month}`);
+            const isExpanded = container.classList.contains('expanded');
+
+            // Close all others
+            document.querySelectorAll('.songs-container').forEach(el => {
+                el.classList.remove('expanded');
+            });
+            document.querySelectorAll('.expand-btn').forEach(el => {
+                el.classList.remove('expanded');
+            });
+
+            if (!isExpanded) {
+                container.classList.add('expanded');
+                btn.classList.add('expanded');
+                loadMonthSongs(month);
+            }
+        }
+
+        async function loadMonthSongs(month) {
+            const container = document.getElementById(`songs-${month}`);
+            if (container.dataset.loaded) return;
+
+            try {
+                const response = await fetch('monthly_songs_compact.json');
+                const data = await response.json();
+                const songs = data[month] || [];
+
+                container.innerHTML = `
+                    <div class="pt-4 border-t border-white/5 mt-4">
+                        <div class="space-y-2 max-h-64 overflow-y-auto pr-2">
+                            ${songs.map((song, i) => `
+                                <div class="song-item py-2 flex items-center justify-between">
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm text-white truncate">${i + 1}. ${song.name}</p>
+                                        <p class="text-xs text-slate-400 truncate">${song.artists}</p>
+                                    </div>
+                                    <span class="text-xs text-slate-500 flex-shrink-0">${song.date.split('/').slice(1).join('/')}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+                container.dataset.loaded = 'true';
+            } catch (e) {
+                container.innerHTML = `
+                    <div class="pt-4 border-t border-white/5 mt-4">
+                        <p class="text-sm text-slate-400">请确保 monthly_songs_compact.json 文件在同一目录</p>
+                    </div>
+                `;
+            }
+        }
+
+        function toggleSort(type) {
+            currentSort = type;
+            document.getElementById('sort-time').classList.toggle('active', type === 'time');
+            document.getElementById('sort-count').classList.toggle('active', type === 'count');
+            renderMonthCards();
+        }
+
+        function filterYear(year, btn) {
+            currentFilter = year;
+
+            // Update button states
+            document.querySelectorAll('.year-filter-btn').forEach(b => {
+                b.classList.remove('active');
+            });
+
+            if (btn) {
+                btn.classList.add('active');
+            } else {
+                document.querySelector('.year-filter-btn:first-child').classList.add('active');
+            }
+
+            renderMonthCards();
+        }
+
+        function scrollToMonth(month) {
+            const element = document.getElementById(`month-${month}`);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                element.classList.add('ring-2', 'ring-emerald-400', 'ring-opacity-50');
+                setTimeout(() => {
+                    element.classList.remove('ring-2', 'ring-emerald-400', 'ring-opacity-50');
+                }, 2000);
+            }
+        }
+
+        // Start
+        init();
+    </script>
+</body>
+</html>
