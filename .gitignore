@@ -10,3 +10,16 @@ anonymous_token
 .vercel
 .env
 IFLOW.md
+
+# Generated audio exports / temp media
+exports/ipod_touch/audio/
+exports/ipod_touch/**/*.m4a
+exports/ipod_touch/**/*.mp3
+_tmp_first_playlist_track.mp3
+exports/ipod_touch/runs/
+exports/ipod_touch/pipeline_state.sqlite3
+
+# Python cache
+__pycache__/
+*.pyc
+unfollow-bak.js
